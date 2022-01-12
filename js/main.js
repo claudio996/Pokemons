@@ -1,58 +1,45 @@
 const d = document,
-    $main = d.querySelector("main"),
-    $links = d.querySelector(".links");
-let pokemons = "https://pokeapi.co/api/v2/pokemon/";
+    $shows = d.getElementById("shows"),
+    $template = d.getElementById('show-template').content,
+    $fragment = d.createDocumentFragment();
 
-async function loadPokemons(url) {
-    try {
-
-        $main.innerHTML = `<img class="loader" src= "assets/rings.svg" alt ="Cargando..">`;
-        let res = await fetch(url),
-            json = await res.json(),
-            $template = "",
-            $prevLink, $nextlink;
-        console.log(json);
-        if (!res.ok) throw { status: res.status, statusText: res.statusText }
-        for (let i = 0; i < json.results.length; i++) {
-            //   console.log(json.results[i]);
+d.addEventListener("keypress", async e => {
+    if (e.target.matches("#search")) {
+        if (e.key === "Enter") { //get-api
             try {
-                let res = await fetch(json.results[i].url),
-                    pokemon = await res.json();
+                $shows.innerHTML = `<img class ="loader" src="./assets/circles.svg" alt="Cargando ...">`;
+                let query = e.target.value.toLowerCase(),
+                    api = `https://api.tvmaze.com/search/shows?q=${query}`;
+                res = await fetch(api),
+                    json = await res.json();
+
+                console.log(api, res, json);
                 if (!res.ok) throw { status: res.status, statusText: res.statusText }
-                $template += `
-                <figure>
-                <img src="${pokemon.sprites.front_default}" alt= "${pokemon.name}">
-                <figcaption>${pokemon.name}</figcaption>
-                </figure>`;
+                if (json.length === 0) {
+                    $shows.innerHTML = `<h2>No existen resultados para el criterio de busqueda : <mark>${query}</mark></h2>`
+                } else {
+                    json.forEach(element => {
+                        $template.querySelector("h3").textContent = element.show.name;
+                        $template.querySelector("div").innerHTML = element.show.summary ? element.show.summary : "Sin descripción";
+                        $template.querySelector("img").src = element.show.image ? element.show.image.medium : "Sin imagen"
+                        $template.querySelector("img").alt = element.show.name;
+                        $template.querySelector("img").style.maxWidth = "100%";
+                        $template.querySelector("a").href = element.show.url ? element.show.url : "#";
+                        $template.querySelector("a").target = element.show.url ? "__blank" : "_self";
+                        $template.querySelector("a").textContent = element.show.url ? "Ver mas" : "";
 
+
+                        let $clone = d.importNode($template, true);
+                        $fragment.appendChild($clone);
+                    });
+                    $shows.innerHTML = "";
+                    $shows.appendChild($fragment);
+                }
             } catch (error) {
-                console.log(err);
-                let msg = err.statusText || "Ocurrio un error";
-                $template += `
-                <figure>
-                <figcaption>${err.status} ${err.msg}</figcaption>
-                </figure>`;
-
+                console.log(error);
+                let mensaje = error.statusText || "Ocurrio un error";
+                $shows.innerHTML = `<p>Error ${error.status} : ${mensaje}</p>`;
             }
         }
-
-        $main.innerHTML = $template;
-        $prevLink = json.previous ? `<a href="${json.previous}">⏮️ </a> ` : "";
-        $nextlink = json.next ? `<a href = "${json.next}">⏭️ </a>` : "";
-        $links.innerHTML = $prevLink + " " + $nextlink;
-
-    } catch (err) {
-        console.log(err);
-        let msg = err.statusText || "Ocurrio un error";
-        $main.innerHTML = ` <p> $ { err.status }: $ { msg } </p>`
     }
-}
-
-d.addEventListener("DOMContentLoaded", e => loadPokemons(pokemons));
-
-d.addEventListener("click", e => {
-    if (e.target.matches(".links a")) {
-        e.preventDefault();
-        loadPokemons(e.target.getAttribute("href"));
-    }
-});
+})
